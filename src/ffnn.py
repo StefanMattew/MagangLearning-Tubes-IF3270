@@ -34,6 +34,32 @@ class Activation:
         if derivative: 
             return softmax * (1 - softmax)
         return softmax
+
+class Loss:
+    @staticmethod
+    def mse(y_true, y_pred, derivative=False):
+        # y_true, y_pred = arr
+        if derivative:
+            return 2 * (y_pred - y_true) / y_true.shape[0]
+        return np.mean((y_true - y_pred) ** 2)
+    
+    @staticmethod
+    def binary_cross_entropy(y_true, y_pred, derivative=False):
+        # y_true, y_pred = arr
+        epsilon = 1e-15
+        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+        if derivative:
+            return (y_pred - y_true) / (y_pred * (1 - y_pred)) / y_true.shape[0]
+        return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+
+    @staticmethod
+    def categorical_cross_entropy(y_true, y_pred, derivative=False):
+        # y_true, y_pred = arr
+        epsilon = 1e-15
+        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+        if derivative:
+            return -y_true / y_pred / y_true.shape[0]
+        return -np.mean(np.sum(y_true * np.log(y_pred), axis=1))
     
 class Layer:
     def __init__ (self, input_size, output_size, activation, init_method= 'random', seed=None, lower=-0.5, upper=0.5, mean=0, var=1 ):
