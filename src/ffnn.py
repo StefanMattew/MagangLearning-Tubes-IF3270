@@ -2,21 +2,38 @@ import numpy as np
 
 class Activation:
     @staticmethod
+    def linear(x, derivative=False):
+        if derivative: 
+            return x
+        return x
+    
+    @staticmethod
     def relu(x, derivative=False):
-        if derivative: return np.where(x > 0, 1, 0)
+        if derivative: 
+            return np.where(x > 0, 1, 0)
         return np.maximum(0, x)
 
     @staticmethod
     def sigmoid(x, derivative=False):
         sig = 1 / (1 + np.exp(-x))
-        if derivative: return sig * (1 - sig)
+        if derivative: 
+            return sig * (1 - sig)
         return sig
 
     @staticmethod
     def tanh(x, derivative=False):
         tanh = np.tanh(x)
-        if derivative: return 1 - tanh ** 2
+        if derivative: 
+            return 1 - tanh ** 2
         return tanh
+
+    @staticmethod
+    def softmax(x, derivative=False):
+        exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+        softmax = exp_x / np.sum(exp_x, axis=1, keepdims=True)
+        if derivative: 
+            return softmax * (1 - softmax)
+        return softmax
     
 class Layer:
     def __init__ (self, input_size, output_size, activation, init_method= 'random', seed=None, lower=-0.5, upper=0.5, mean=0, var=1 ):
