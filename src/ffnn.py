@@ -4,7 +4,7 @@ class Activation:
     @staticmethod
     def linear(x, derivative=False):
         if derivative: 
-            return x
+            return 1
         return x
     
     @staticmethod
@@ -93,14 +93,15 @@ class FFNN:
         self.layers.append(layer)
         
     def forward(self, x_batch):
-        input = x_batch
+        current_input = x_batch
 
         for layer in self.layers:
-            layer.input = input
-            layer.z = np.dot(input, layer.weights) + layer.bias
+            layer.input = current_input
+            layer.z = np.dot(current_input, layer.weights) + layer.bias
+            
             activation_func = getattr(Activation, layer.activation_name)
-            input = activation_func(layer.z)
-        return input
+            current_input = activation_func(layer.z)
+        return current_input
 
     def compute_loss(self, y_true, y_pred, derivative=False):
         loss_func = getattr(Loss, self.loss_function)
@@ -128,7 +129,7 @@ class FFNN:
 
     def show_weights(self):
         for i, layer in enumerate(self.layers):
-            print(f"Layer {i+1} Weights:\n{layer.weights}\nBias:\n{layer.bias}\n")
+            print(f"Layer {i+1} Weights:\n {layer.weights}\n Bias:\n{layer.bias}\n")
         #fungsi nampilin distribusi bobot
 
     def update_weights(self, learning_rate):
@@ -142,7 +143,7 @@ class FFNN:
     def save(self, filename):
         with open(filename, 'w') as f:
             for i, layer in enumerate(self.layers):
-                f.write(f"Layer {i+1} Weights:\n{layer.weights}\nBias:\n{layer.bias}\n")
+                f.write(f"Layer {i+1} Weights:\n {layer.weights}\n Bias:\n{layer.bias}\n")
 
         print (f"Model saved to {filename}")
 
@@ -152,7 +153,40 @@ class FFNN:
             # perlu cek dulu format
         print(f"Model loaded from {filename}:")
     
-    def fit(self):
-        pass
+    def fit(self, X_train, y_train, batch_size=32, learning_rate=0.01, epochs=100, l1_lambda=0.0, l2_lambda=0.0, verbose= 1):
+        history = []
+        n= X_train.shape[0]
+        
+        for epoch in range(epochs):
+            # shuffle data
+            indices = np.arange(n)
+            np.random.shuffle(indices)
+
+            X_train = X_train[indices]
+            y_train = y_train[indices]
+
+            epoch_loss = 0
+
+            for i in range(0, n, batch_size):
+                X_batch = X_train[i:i+batch_size]
+                y_batch = y_train[i:i+batch_size]
+
+                y_pred = self.forward(X_batch)
+
+                batch_loss = self.compute_loss(y_batch, y_pred)
+                epoch_loss += batch_loss * X_batch.shape[0]
+
+                self.backward(y_batch, y_pred, l1_lambda, l2_lambda)
+
+                self.update_weights(learning_rate)
+            
+            avg_loss = epoch_loss / n
+            history.append(avg_loss)
+
+            if verbose == 1 and (epoch + 1) % 10 == 0 or epoch == 0:
+                print(f"Epoch {epoch + 1}/{epochs}.  Loss: {avg_loss:.4f}")
+
+        return history
+        
 
  
