@@ -69,7 +69,7 @@ class Layer:
 
         if init_method == 'zero':
             self.weights = np.zeros((input_size, output_size))
-        if init_method == 'uniform':
+        elif init_method == 'uniform':
             self.weights = np.random.uniform(lower, upper, (input_size, output_size))
         else :# init_method == 'random_normal'
             sd = np.sqrt(var) # karna random normal pakenya standar deviasi
@@ -81,8 +81,11 @@ class Layer:
         self.input = None 
         self.z = None
 
+        self.dweights = np.zeros_like(self.weights)
+        self.dbias = np.zeros_like(self.bias)
+
 class FFNN:
-    def __init__(self, loss_function='BCE'):
+    def __init__(self, loss_function='binary_cross_entropy'):
         self.layers = []
         self.loss_function = loss_function
 
@@ -99,15 +102,39 @@ class FFNN:
             input = activation_func(layer.z)
         return input
 
+    def compute_loss(self, y_true, y_pred, derivative=False):
+        loss_func = getattr(Loss, self.loss_function)
+        return loss_func(y_true, y_pred, derivative)
     
+    def backward(self, y_true, y_pred, l1_lambda=0.0, l2_lambda=0.0):
+        delta = self.compute_loss(y_true, y_pred, derivative=True)
 
-    def backward():
-        pass
+        for i in reversed(range(len(self.layers))):
+            layer = self.layers[i]
+            activation_func = getattr(Activation, layer.activation_name)
+            d_activation= activation_func(layer.z, derivative=True)
+
+            delta = delta * d_activation
+            layer.dweights = np.dot(layer.input.T, delta)
+            layer.dbias = np.sum(delta, axis=0, keepdims=True)
+
+            if l1_lambda > 0:
+                layer.dweights += l1_lambda * np.sign(layer.weights)
+            if l2_lambda > 0:
+                layer.dweights += l2_lambda * layer.weights
+
+            if i > 0:
+                delta = np.dot(delta, layer.weights.T)
 
     def show_weights(self):
         for i, layer in enumerate(self.layers):
             print(f"Layer {i+1} Weights:\n{layer.weights}\nBias:\n{layer.bias}\n")
         #fungsi nampilin distribusi bobot
+
+    def update_weights(self, learning_rate):
+        for layer in self.layers:
+            layer.weights -= learning_rate * layer.dweights
+            layer.bias -= learning_rate * layer.dbias
 
     def show_gradient(self):
         pass
@@ -124,12 +151,7 @@ class FFNN:
             model = f.read()
             # perlu cek dulu format
         print(f"Model loaded from {filename}:")
-
-
-    def compute_loss(self, y_true, y_pred):
-        # dibikin class ato langsung fungsi
-        pass
-
+    
     def fit(self):
         pass
 
