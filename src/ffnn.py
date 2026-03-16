@@ -71,6 +71,12 @@ class Layer:
             self.weights = np.zeros((input_size, output_size))
         elif init_method == 'uniform':
             self.weights = np.random.uniform(lower, upper, (input_size, output_size))
+        elif init_method == 'xavier':
+            limit = np.sqrt(6 / (input_size + output_size))
+            self.weights = np.random.uniform(-limit, limit, (input_size, output_size))
+        elif init_method == 'he':
+            std = np.sqrt(2 / input_size)
+            self.weights = np.random.normal(0, std, (input_size, output_size))
         else :# init_method == 'random_normal'
             sd = np.sqrt(var) # karna random normal pakenya standar deviasi
 
