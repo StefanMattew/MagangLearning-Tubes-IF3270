@@ -62,25 +62,18 @@ class Loss:
         return -np.mean(np.sum(y_true * np.log(y_pred), axis=1))
     
 class Layer:
-    def __init__ (self, input_size, output_size, activation, init_method= 'random', seed=None, lower=-0.5, upper=0.5, mean=0, var=1 ):
-        
-        if seed is not None:
-            np.random.seed(seed)
+    def __init__(self, input_size, output_size, activation, init_method='random_normal', seed=None, lower=-0.5, upper=0.5, mean=0, var=1):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.init_method = init_method
+        self.seed = seed
+        self.lower = lower
+        self.upper = upper
+        self.mean = mean
+        self.var = var
 
-        if init_method == 'zero':
-            self.weights = np.zeros((input_size, output_size))
-        elif init_method == 'uniform':
-            self.weights = np.random.uniform(lower, upper, (input_size, output_size))
-        elif init_method == 'xavier':
-            limit = np.sqrt(6 / (input_size + output_size))
-            self.weights = np.random.uniform(-limit, limit, (input_size, output_size))
-        elif init_method == 'he':
-            std = np.sqrt(2 / input_size)
-            self.weights = np.random.normal(0, std, (input_size, output_size))
-        else :# init_method == 'random_normal'
-            sd = np.sqrt(var) # karna random normal pakenya standar deviasi
-
-            self.weights = np.random.normal(mean, sd, (input_size, output_size))
+        self.weights = None
+        self.initialize_weights()
 
         self.bias = np.zeros((1, output_size))
         self.activation_name = activation
@@ -90,12 +83,48 @@ class Layer:
         self.dweights = np.zeros_like(self.weights)
         self.dbias = np.zeros_like(self.bias)
 
+        if self.seed is not None:
+            self.initialize_weights()
+
+    def initialize_weights(self, rng=None):
+        if self.seed is not None:
+            rng = np.random.default_rng(self.seed)
+        elif rng is None:
+            rng = np.random.default_rng()
+
+        if self.init_method == 'zero':
+            self.weights = np.zeros((self.input_size, self.output_size))
+
+        elif self.init_method == 'uniform':
+            self.weights = rng.uniform(self.lower, self.upper, (self.input_size, self.output_size))
+
+        elif self.init_method == 'random_normal':
+            sd = np.sqrt(self.var)
+            self.weights = rng.normal(self.mean, sd, (self.input_size, self.output_size))
+
+        elif self.init_method == 'xavier':
+            limit = np.sqrt(6 / (self.input_size + self.output_size))
+            self.weights = rng.uniform(-limit, limit, (self.input_size, self.output_size))
+
+        elif self.init_method == 'he':
+            std = np.sqrt(2 / self.input_size)
+            self.weights = rng.normal(0, std, (self.input_size, self.output_size))
+
+        else: # default random_normal
+            self.weights = rng.uniform(self.lower, self.upper, (self.input_size, self.output_size))
+
+        self.dweights = np.zeros_like(self.weights)
+
 class FFNN:
-    def __init__(self, loss_function='binary_cross_entropy'):
+    def __init__(self, loss_function='binary_cross_entropy', seed=None):
         self.layers = []
         self.loss_function = loss_function
+        self.seed = seed
+        self.rng = np.random.default_rng(seed) if seed is not None else np.random.default_rng()
 
     def add_layer(self, layer):
+        if layer.seed is None:
+            layer.initialize_weights(rng=self.rng)
         self.layers.append(layer)
         
     def forward(self, x_batch):
@@ -170,7 +199,7 @@ class FFNN:
         for epoch in range(epochs):
             # shuffle data
             indices = np.arange(n)
-            np.random.shuffle(indices)
+            self.rng.shuffle(indices)
 
             X_train = X_train[indices]
             y_train = y_train[indices]
