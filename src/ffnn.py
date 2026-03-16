@@ -35,6 +35,24 @@ class Activation:
             return softmax * (1 - softmax)
         return softmax
 
+    @staticmethod
+    def binary_step(x, derivative=False):
+        if derivative: 
+            return 0
+        return np.where(x >= 0, 1, 0)
+    
+    @staticmethod
+    def softsign(x, derivative=False):
+        if derivative:
+            return 1 / (1 + np.abs(x)) ** 2
+        return x / (1 + np.abs(x))
+    
+    @staticmethod
+    def leaky_relu(x, derivative=False):
+        if derivative:
+            return np.where(x > 0, 1, 0.01)
+        return np.where(x > 0, x, 0.01 * x)
+
 class Loss:
     @staticmethod
     def mse(y_true, y_pred, derivative=False):
