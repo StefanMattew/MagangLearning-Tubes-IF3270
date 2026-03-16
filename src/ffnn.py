@@ -153,8 +153,12 @@ class FFNN:
             # perlu cek dulu format
         print(f"Model loaded from {filename}:")
     
-    def fit(self, X_train, y_train, batch_size=32, learning_rate=0.01, epochs=100, l1_lambda=0.0, l2_lambda=0.0, verbose= 1):
-        history = []
+    def fit(self, X_train, y_train, X_val=None, y_val=None, batch_size=32, learning_rate=0.01, epochs=100, l1_lambda=0.0, l2_lambda=0.0, verbose= 1):
+        history = {
+            'train_loss': [],
+            'val_loss': []
+        }
+
         n= X_train.shape[0]
         
         for epoch in range(epochs):
@@ -180,11 +184,22 @@ class FFNN:
 
                 self.update_weights(learning_rate)
             
-            avg_loss = epoch_loss / n
-            history.append(avg_loss)
+            avg_train_loss = epoch_loss / n
+            history['train_loss'].append(avg_train_loss)
+
+            # Count validation loss
+            if X_val is not None and y_val is not None:
+                y_val_pred = self.forward(X_val)
+                val_loss = self.compute_loss(y_val, y_val_pred)
+                history['val_loss'].append(val_loss)
 
             if verbose == 1 and ((epoch + 1) % 10 == 0 or epoch == 0):
-                print(f"Epoch {epoch + 1}/{epochs}.  Loss: {avg_loss:.4f}")
+                status = f"Epoch {epoch + 1}/{epochs}.  Train Loss: {avg_train_loss:.4f}"
+                
+                if X_val is not None and y_val is not None:
+                    status += f", Val Loss: {val_loss:.4f}"
+                
+                print(status)
 
         return history
         
