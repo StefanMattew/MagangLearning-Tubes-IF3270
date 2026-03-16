@@ -183,7 +183,7 @@ class FFNN:
             avg_loss = epoch_loss / n
             history.append(avg_loss)
 
-            if verbose == 1 and (epoch + 1) % 10 == 0 or epoch == 0:
+            if verbose == 1 and ((epoch + 1) % 10 == 0 or epoch == 0):
                 print(f"Epoch {epoch + 1}/{epochs}.  Loss: {avg_loss:.4f}")
 
         return history
