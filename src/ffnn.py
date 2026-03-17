@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 class Activation:
     @staticmethod
@@ -194,16 +195,15 @@ class FFNN:
         pass
 
     def save(self, filename):
-        with open(filename, 'w') as f:
-            for i, layer in enumerate(self.layers):
-                f.write(f"Layer {i+1} Weights:\n {layer.weights}\n Bias:\n{layer.bias}\n")
-
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+            
         print (f"Model saved to {filename}")
 
     def load(self, filename):
-        with open(filename, 'r') as f:
-            model = f.read()
-            # perlu cek dulu format
+        with open(filename, 'rb') as f:
+            self.layers = pickle.load(f)
+
         print(f"Model loaded from {filename}:")
     
     def fit(self, X_train, y_train, X_val=None, y_val=None, batch_size=32, learning_rate=0.01, epochs=100, l1_lambda=0.0, l2_lambda=0.0, verbose= 1):
