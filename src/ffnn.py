@@ -81,7 +81,7 @@ class Loss:
         return -np.mean(np.sum(y_true * np.log(y_pred), axis=1))
     
 class Layer:
-    def __init__(self, input_size, output_size, activation, init_method='random_normal', seed=None, lower=-0.5, upper=0.5, mean=0, var=1):
+    def __init__(self, input_size, output_size, activation, init_method='random_normal', seed=None, lower=-0.5, upper=0.5, mean=0, var=1, norm=None):
         self.input_size = input_size
         self.output_size = output_size
         self.init_method = init_method
@@ -90,6 +90,7 @@ class Layer:
         self.upper = upper
         self.mean = mean
         self.var = var
+        self.norm = norm
 
         self.weights = None
         self.initialize_weights()
@@ -101,6 +102,9 @@ class Layer:
 
         self.dweights = np.zeros_like(self.weights)
         self.dbias = np.zeros_like(self.bias)
+
+        if self.norm == 'rmsnorm':
+            self.rmsnorm = RMSNorm(output_size)
 
         if self.seed is not None:
             self.initialize_weights()
@@ -152,6 +156,9 @@ class FFNN:
         for layer in self.layers:
             layer.input = current_input
             layer.z = np.dot(current_input, layer.weights) + layer.bias
+
+            if hasattr(layer, 'norm') and layer.norm == 'rmsnorm':
+                layer.z = layer.rmsnorm.forward(layer.z)
             
             activation_func = getattr(Activation, layer.activation_name)
             current_input = activation_func(layer.z)
@@ -170,6 +177,10 @@ class FFNN:
             d_activation= activation_func(layer.z, derivative=True)
 
             delta = delta * d_activation
+
+            if hasattr(layer, 'norm') and layer.norm == 'rmsnorm':
+                delta = layer.rmsnorm.backward(delta)
+
             layer.dweights = np.dot(layer.input.T, delta)
             layer.dbias = np.sum(delta, axis=0, keepdims=True)
 
@@ -190,6 +201,9 @@ class FFNN:
         for layer in self.layers:
             layer.weights -= learning_rate * layer.dweights
             layer.bias -= learning_rate * layer.dbias
+
+            if hasattr(layer, 'norm') and layer.norm == 'rmsnorm':
+                layer.rmsnorm.update_weights(learning_rate)
 
     def show_gradient(self):
         pass
@@ -265,6 +279,9 @@ class RMSNorm:
         self.x = None
         self.x_norm = None
         self.rms = None
+        
+        self.dgamma = np.zeros_like(self.gamma)
+        self.dbeta = np.zeros_like(self.beta)
 
     def forward(self, x):
         self.x = x
@@ -272,17 +289,17 @@ class RMSNorm:
         self.x_norm = x / self.rms
         return self.gamma * self.x_norm + self.beta
 
-    def backward(self, dout, learning_rate):
+    def backward(self, dout):
         _, D = dout.shape
         
-        dgamma = np.sum(dout * self.x_norm, axis=0, keepdims=True)
-        dbeta = np.sum(dout, axis=0, keepdims=True)
+        self.dgamma = np.sum(dout * self.x_norm, axis=0, keepdims=True)
+        self.dbeta = np.sum(dout, axis=0, keepdims=True)
         
         dx_norm = dout * self.gamma
         drms = np.sum(dx_norm * self.x * (-1.0 / (self.rms**2)), axis=-1, keepdims=True)
         dx = (dx_norm / self.rms) + (drms * self.x / (D * self.rms))
-        
-        self.gamma -= learning_rate * dgamma
-        self.beta -= learning_rate * dbeta
-        
         return dx
+        
+    def update_weights(self, learning_rate):
+        self.gamma -= learning_rate * self.dgamma
+        self.beta -= learning_rate * self.dbeta
