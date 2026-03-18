@@ -255,6 +255,34 @@ class FFNN:
                 print(status)
 
         return history
+    
+class RMSNorm:
+    def __init__(self, size, eps=1e-8):
+        self.gamma = np.ones((1, size))
+        self.beta = np.zeros((1, size))
+        self.eps = eps
         
+        self.x = None
+        self.x_norm = None
+        self.rms = None
 
- 
+    def forward(self, x):
+        self.x = x
+        self.rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.eps)
+        self.x_norm = x / self.rms
+        return self.gamma * self.x_norm + self.beta
+
+    def backward(self, dout, learning_rate):
+        _, D = dout.shape
+        
+        dgamma = np.sum(dout * self.x_norm, axis=0, keepdims=True)
+        dbeta = np.sum(dout, axis=0, keepdims=True)
+        
+        dx_norm = dout * self.gamma
+        drms = np.sum(dx_norm * self.x * (-1.0 / (self.rms**2)), axis=-1, keepdims=True)
+        dx = (dx_norm / self.rms) + (drms * self.x / (D * self.rms))
+        
+        self.gamma -= learning_rate * dgamma
+        self.beta -= learning_rate * dbeta
+        
+        return dx
