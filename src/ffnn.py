@@ -216,9 +216,11 @@ class FFNN:
 
     def load(self, filename):
         with open(filename, 'rb') as f:
-            self.layers = pickle.load(f)
+            loaded_model = pickle.load(f)
+            self.layers = loaded_model.layers
+            self.loss_function = loaded_model.loss_function
 
-        print(f"Model loaded from {filename}:")
+        print(f"Model loaded from {filename}")
     
     def fit(self, X_train, y_train, X_val=None, y_val=None, batch_size=32, learning_rate=0.01, epochs=100, l1_lambda=0.0, l2_lambda=0.0, verbose= 1):
         history = {
